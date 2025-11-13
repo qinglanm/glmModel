@@ -1,0 +1,107 @@
+---
+title: "glm_validation_and_benchmarking"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{glm_validation_and_benchmarking}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+Introduction
+
+This vignette validates the correctness and computational efficiency of the custom my_glm() function, which implements the Iteratively Reweighted Least Squares (IRLS) algorithm for binary logistic regression.
+We compare its output and runtime against the base R glm() function.
+```{r setup}
+library(glmModel)
+library(bench)    # For efficiency checking
+library(stats)    # Basic R function
+set.seed(625)
+```
+
+We simulate data with three predictors to make the test more realistic.
+```{r}
+# Simulated data with an appropriate size to validate  (N=200)
+n <- 200
+X1 <- rnorm(n)
+X2 <- rnorm(n)
+X3 <- sample(0:1, n, replace = TRUE)
+
+LP <- 0.5 + 1.2 * X1 - 0.8 * X2 + 0.6 * X3
+Prob <- 1 / (1 + exp(-LP))
+Y <- rbinom(n, 1, Prob)
+
+df_small <- data.frame(Y, X1, X2, X3)
+```
+
+2. Correctness Verification
+
+We first fit the model on the small dataset to ensure the coefficients estimated by my_glm() are numerically equivalent to those from glm() within a tolerance 10^(-4)
+```{r correctness_check}
+# Fit with custom IRLS
+
+my_model <- my_glm(Y ~ X1 + X2 + X3, data = df_small)
+
+# Fit with base R glm
+
+base_model <- glm(Y ~ X1 + X2 + X3, data = df_small, family = binomial(link = "logit"))
+
+# Print summaries
+
+summary(my_model)
+summary(base_model)
+
+# Compare coefficients
+
+is_equal <- all.equal(
+as.vector(my_model$coefficients),
+as.vector(coef(base_model)),
+tolerance = 1e-4
+)
+
+cat("\nCoefficient difference can be tolerated:", is_equal, "\n")
+stopifnot(isTRUE(is_equal))
+```
+The output confirms that the coefficient estimates from my_glm are numerically equivalent to those from the base R glm() function, verifying the correct implementation of my IRLS algorithm.
+
+
+3. Computational Efficiency Benchmarking
+
+We now test computational speed on a large dataset to compare the pure R implementation with the optimized C-level glm().
+```{r efficiency_data}
+# Simulated data with size 10000
+N_large <- 10000
+X1_large <- rnorm(N_large)
+X2_large <- rnorm(N_large)
+X3_large <- sample(0:1, N_large, replace = TRUE)
+
+LP_large <- 0.5 + 1.2 * X1_large - 0.8 * X2_large + 0.6 * X3_large
+Prob_large <- 1 / (1 + exp(-LP_large))
+Y_large <- rbinom(N_large, 1, Prob_large)
+
+df_large <- data.frame(Y = Y_large, X1 = X1_large, X2 = X2_large, X3 = X3_large)
+
+## Benchmarking
+bench_results <- bench::mark(
+  # My Rcpp optimized version (my_glm)
+  MyGLM_Optimized = my_glm(Y ~ X1 + X2 + X3, data = df_large, max_iter = 20),
+  
+  # Base R 的 glm
+  BaseGLM = glm(Y ~ X1 + X2 + X3, data = df_large, family = binomial(link = "logit")),
+  
+  iterations = 5, 
+  check = FALSE   
+)
+
+print(bench_results)
+```
+
+4. Conclusion
+
+The coefficient estimates from my_glm() are numerically consistent with glm(). I optimized my code using Rcpp for IRLS part and the runtime for my optimized version code is quicker than R's basic glm function. This confirms that my implementation and optimization of the IRLS algorithm for logistic regression is both correct and functional.

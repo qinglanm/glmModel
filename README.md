@@ -1,0 +1,122 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# glmModel
+
+<!-- badges: start -->
+
+[![R-CMD-check](https://github.com/qinglanm/glmModel/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/qinglanm/glmModel/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/qinglanm/glmModel/graph/badge.svg)](https://app.codecov.io/gh/qinglanm/glmModel)
+<!-- badges: end -->
+
+The goal of glmModel is to provide a custom implementation of the
+Iteratively Reweighted Least Squares (IRLS) algorithm for fitting Binary
+Logistic Regression models. It aims to replicate the core coefficient
+estimation and statistical output of the base R stats::glm() function.
+
+## Installation
+
+You can install the development version of glmModel like so:
+
+``` r
+# Install from GitHub
+remotes::install_github("qinglanm/glmModel")
+```
+
+## Basic Usage and Example
+
+The primary function is my_glm(), which uses an interface similar to
+stats::glm(). This example demonstrates fitting a model with multiple
+predictors ($`X_1, X_2, X_3`$).
+
+We start with simulating a dataset with multiple predictors
+($`X_1, X_2, X_3`$):
+
+``` r
+library(glmModel)
+library(stats) # Used for comparison later
+
+# 1. Simulate Data (N=200, 3 predictors)
+set.seed(625)
+n <- 200
+X1 <- rnorm(n)
+X2 <- rnorm(n)
+X3 <- sample(0:1, n, replace = TRUE)
+LP <- 0.5 + 1.2 * X1 - 0.8 * X2 + 0.6 * X3
+Prob <- 1 / (1 + exp(-LP))
+Y <- rbinom(n, 1, Prob)
+df <- data.frame(Y, X1, X2, X3)
+
+# 2. Fit custom Logistic Regression model
+my_model <- my_glm(Y ~ X1 + X2 + X3, data = df)
+```
+
+## Viewing Results
+
+The model output uses standard S3 methods (`print` and `summary`) to
+display key statistics:
+
+``` r
+# Print basic coefficients and convergence status
+print(my_model)
+#> Call:
+#> Y ~ X1 + X2 + X3
+#> <environment: 0x000002958966e6c8>
+#> 
+#> Coefficients:
+#> (Intercept)          X1          X2          X3 
+#>   0.7603639   1.6631445  -0.7886511   0.4966876 
+#> 
+#> IRLS converged in 6 iterations. Converged: TRUE
+
+# View detailed summary (Standard Errors, Z-values, P-values, AIC)
+summary(my_model)
+#> Call:
+#> Y ~ X1 + X2 + X3
+#> <environment: 0x000002958966e6c8>
+#> 
+#> Coefficients:
+#>             Estimate Std. Error z value Pr(>|z|)
+#> (Intercept)   0.7604     0.2616  2.9063   0.0037
+#> X1            1.6631     0.2804  5.9315   0.0000
+#> X2           -0.7887     0.2016 -3.9115   0.0001
+#> X3            0.4967     0.3609  1.3762   0.1687
+#> 
+#> --- Model Statistics ---
+#> Log-likelihood: -95.0297 
+#> AIC: 198.0594 
+#> IRLS Iterations: 6 
+#> Converged: TRUE
+```
+
+## Correctness Validation
+
+The coefficients estimated by my_glm are designed to be numerically
+equivalent to those from the base R glm() function:
+
+``` r
+base_model <- glm(Y ~ X1 + X2 + X3, data = df, family = binomial(link = "logit"))
+
+# Verify coefficients are equal within tolerance (1e-4)
+is_correct <- all.equal(as.vector(my_model$coefficients), 
+                        as.vector(coef(base_model)), 
+                        tolerance = 1e-4)
+
+cat("Coefficients match base R GLM:", is_correct)
+#> Coefficients match base R GLM: TRUE
+```
+
+## Implementation Details and Optimization
+
+The `my_glm` function is built for robustness and speed:
+
+- **Rcpp Acceleration (Bonus \#1):** The most computationally intensive
+  step in the IRLS algorithm, the calculation of the Hessian matrix
+  proxy ($`\mathbf{X}^T \mathbf{W} \mathbf{X}`$), is implemented in C++
+  using **RcppArmadillo** for significant performance gains, especially
+  with large datasets.
+- **Numerical Stability:** The algorithm includes stabilization to
+  prevent probabilities ($`\mu`$) from reaching exactly 0 or 1, ensuring
+  the log-likelihood calculation remains robust against floating-point
+  errors.
