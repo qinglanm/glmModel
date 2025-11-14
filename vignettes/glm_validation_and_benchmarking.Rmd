@@ -71,9 +71,9 @@ stopifnot(isTRUE(is_equal))
 The output confirms that the coefficient estimates from my_glm are numerically equivalent to those from the base R glm() function, verifying the correct implementation of my IRLS algorithm.
 
 
-3. Computational Efficiency Benchmarking
+3. Implementation on Large Dataset and Computational Efficiency Benchmarking
 
-We now test computational speed on a large dataset to compare the pure R implementation with the optimized C-level glm().
+We now firstly validate the optimized C-level glm() using pure R glm() coefficients as the baseline on a large dataset and then test the computational speed on the same dataset to compare the pure R implementation with the optimized C-level glm().
 ```{r efficiency_data}
 # Simulated data with size 10000
 N_large <- 10000
@@ -86,6 +86,23 @@ Prob_large <- 1 / (1 + exp(-LP_large))
 Y_large <- rbinom(N_large, 1, Prob_large)
 
 df_large <- data.frame(Y = Y_large, X1 = X1_large, X2 = X2_large, X3 = X3_large)
+
+MyGLM_Optimized = my_glm(Y ~ X1 + X2 + X3, data = df_large, max_iter = 20)
+BaseGLM = glm(Y ~ X1 + X2 + X3, data = df_large, family = binomial(link = "logit"))
+
+summary(MyGLM_Optimized)
+summary(BaseGLM)
+
+# Compare coefficients
+
+is_equal <- all.equal(
+as.vector(MyGLM_Optimized$coefficients),
+as.vector(coef(BaseGLM)),
+tolerance = 1e-4
+)
+
+cat("\nCoefficient difference can be tolerated:", is_equal, "\n")
+stopifnot(isTRUE(is_equal))
 
 ## Benchmarking
 bench_results <- bench::mark(
