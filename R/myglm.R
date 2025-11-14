@@ -176,39 +176,39 @@ my_glm <- function(formula, data, family = "binomial", link = "logit",
 # 7. Summary method (S3 Generic)
 #-----------------------------------------------------------
 #' @export
-summary.my_glm <- function(object) {
-  # Check if v_cov is singular/NA/Inf before proceeding (robustness check)
+summary.my_glm <- function(object, ...) {
+
+  # Check if v_cov is valid before computing SE
   if (any(is.na(diag(object$v_cov))) || any(diag(object$v_cov) <= 0)) {
     warning("Singular VCV matrix detected. Standard errors and p-values may be unreliable.")
-    se <- rep(NA, length(object$coefficients))
-    z <- rep(NA, length(object$coefficients))
+    se   <- rep(NA, length(object$coefficients))
+    z    <- rep(NA, length(object$coefficients))
     pval <- rep(NA, length(object$coefficients))
   } else {
-    se <- sqrt(diag(object$v_cov))
-    z <- object$coefficients / se
-    # Two-sided p-value calculation using standard normal (z-distribution)
+    se   <- sqrt(diag(object$v_cov))
+    z    <- object$coefficients / se
     pval <- 2 * (1 - pnorm(abs(z)))
   }
 
-  # Assign coefficient names
-  names(object$coefficients) <- rownames(object$v_cov)
+  coef_tab <- cbind(
+    Estimate    = object$coefficients,
+    `Std. Error` = se,
+    `z value`    = z,
+    `Pr(>|z|)`   = pval
+  )
 
   cat("Call:\n")
   print(object$formula)
+
   cat("\nCoefficients:\n")
-  coef_tab <- cbind(Estimate = object$coefficients,
-                    `Std. Error` = se,
-                    `z value` = z,
-                    `Pr(>|z|)` = pval)
   print(round(coef_tab, 4))
 
   cat("\n--- Model Statistics ---\n")
   cat("Log-likelihood:", round(object$logLik, 4), "\n")
-  cat("AIC:", round(object$AIC, 4), "\n")
-  cat("IRLS Iterations:", object$iterations, "\n")
-  cat("Converged:", object$converged, "\n")
+  cat("AIC:",           round(object$AIC, 4),     "\n")
+  cat("IRLS Iterations:", object$iterations,      "\n")
+  cat("Converged:",      object$converged,        "\n")
 
-  # Return a structured list invisibly, similar to base R summary methods
   invisible(list(
     coefficients = coef_tab,
     logLik = object$logLik,
@@ -222,12 +222,17 @@ summary.my_glm <- function(object) {
 #-----------------------------------------------------------
 #' @export
 print.my_glm <- function(x, ...) {
+
   cat("Call:\n")
   print(x$formula)
+
   cat("\nCoefficients:\n")
-  # Assign names for better printing
-  names(x$coefficients) <- rownames(x$v_cov)
   print(x$coefficients)
-  cat(paste0("\nIRLS converged in ", x$iterations, " iterations. Converged: ", x$converged, "\n"))
+
+  cat(paste0(
+    "\nIRLS converged in ", x$iterations,
+    " iterations. Converged: ", x$converged, "\n"
+  ))
+
   invisible(x)
 }
