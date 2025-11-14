@@ -62,7 +62,7 @@ display key statistics:
 print(my_model)
 #> Call:
 #> Y ~ X1 + X2 + X3
-#> <environment: 0x0000020a7f67a6c8>
+#> <environment: 0x000002db006956c8>
 #> 
 #> Coefficients:
 #> (Intercept)          X1          X2          X3 
@@ -74,7 +74,7 @@ print(my_model)
 summary(my_model)
 #> Call:
 #> Y ~ X1 + X2 + X3
-#> <environment: 0x0000020a7f67a6c8>
+#> <environment: 0x000002db006956c8>
 #> 
 #> Coefficients:
 #>             Estimate Std. Error z value Pr(>|z|)

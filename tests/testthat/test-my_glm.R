@@ -109,3 +109,33 @@ test_that("summary.my_glm handles singular VCV matrix", {
   expect_output(print(dummy_model), "Coefficients:")
   expect_output(print(dummy_model), "IRLS converged in 5 iterations")
 })
+
+# -------------------- Test 6: Formula and Data Coverage --------------------
+test_that("my_glm catches incorrect input types", {
+  # 1. Coverage formula check
+  # if (!inherits(formula, "formula")) stop("...")
+  expect_error(my_glm("Y ~ X1", data = data.frame(Y=0,X1=1)),
+               "formula must be a valid R formula.",
+               fixed = TRUE)
+
+  # 2. Coverage data check
+  # if (!is.data.frame(data)) stop("...")
+  df_matrix <- matrix(1:4, ncol = 2)
+  expect_error(my_glm(V1 ~ V2, data = df_matrix),
+               "data must be a data frame.",
+               fixed = TRUE)
+})
+
+# -------------------- Test 7: Summary Coverage --------------------
+test_that("my_glm fits correctly and summary is non-singular", {
+  model <- my_glm(Y ~ X1 + X2, data = df_small)
+
+  # Run summary and check if SE/z/pval exist
+  s_output <- summary(model)
+
+  # Check if Std. Error exists and it is not NA/NaN
+  expect_true(all(!is.na(s_output$coefficients[, "Std. Error"])))
+
+  # Check if z value and Pr(>|z|) exist
+  expect_true("z value" %in% colnames(s_output$coefficients))
+})
