@@ -49,3 +49,9 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+      # VITAL: Add the Codecov calculation and upload step here
+      - name: Calculate and upload Code Coverage
+        run: Rscript -e 'install.packages("covr"); covr::codecov()'
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }} # This uses the Secret you added!
