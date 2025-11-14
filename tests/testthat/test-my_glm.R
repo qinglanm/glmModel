@@ -63,3 +63,49 @@ test_that("my_glm handles non-convergence gracefully", {
   # Expect the number of iterations to equal the max limit
   expect_equal(my_model_no_conv$iterations, 1)
 })
+
+# -------------------- Test 4: Testing Family/Link --------------------
+test_that("Input validation catches unsupported family/link", {
+  # Load test data (assuming df is in your environment or defined here)
+  set.seed(625)
+  n <- 50 # Small data for quick test
+  df_small <- data.frame(Y = rbinom(n, 1, 0.5), X1 = rnorm(n))
+
+  # if (family != "binomial")
+  expect_error(my_glm(Y ~ X1, data = df_small, family = "poisson"),
+               "Only binomial family is currently supported.",
+               fixed = TRUE)
+
+  # if (link != "logit")
+  expect_error(my_glm(Y ~ X1, data = df_small, link = "probit"),
+               "Only logit link is currently supported.",
+               fixed = TRUE)
+})
+
+# -------------------- Test 5: Testing Covergence --------------------
+test_that("summary.my_glm handles singular VCV matrix", {
+  # Create a dummy my_glm object with invalid v_cov to trigger the warning path
+  dummy_model <- list(
+    coefficients = c(Int = 1, X = 0.5),
+    v_cov = matrix(c(1, 0, 0, -1), 2, 2, dimnames = list(c("(Intercept)", "X"), c("(Intercept)", "X"))),
+    logLik = -10,
+    AIC = 20,
+    iterations = 5,
+    converged = TRUE,
+    formula = Y ~ X # Need formula for print()
+  )
+  class(dummy_model) <- "my_glm"
+
+  # The summary should issue a warning and still produce a table with NA/NaN
+  # (if check)
+  expect_warning({
+    s_output <- summary(dummy_model)
+  }, "Singular VCV matrix detected. Standard errors and p-values may be unreliable.")
+
+  # Check output structure
+  expect_true(all(is.na(s_output$coefficients[, "Std. Error"])))
+
+  # Check print.my_glm logic
+  expect_output(print(dummy_model), "Coefficients:")
+  expect_output(print(dummy_model), "IRLS converged in 5 iterations")
+})

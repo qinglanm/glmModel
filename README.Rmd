@@ -84,4 +84,4 @@ cat("Coefficients match base R GLM:", is_correct)
 The `my_glm` function is built for robustness and speed:
 
 * **Rcpp Acceleration (Bonus #1):** The most computationally intensive step in the IRLS algorithm, the calculation of the Hessian matrix proxy ($\mathbf{X}^T \mathbf{W} \mathbf{X}$), is implemented in C++ using **RcppArmadillo** for significant performance gains, especially with large datasets.
-* **Numerical Stability:** The algorithm includes stabilization to prevent probabilities ($\mu$) from reaching exactly 0 or 1, ensuring the log-likelihood calculation remains robust against floating-point errors.   
+* **Numerical Stability:** The algorithm includes stabilization to prevent probabilities ($\mu$) from reaching exactly 0 or 1, ensuring the log-likelihood calculation remains robust against floating-point errors.  
